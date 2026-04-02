@@ -1,23 +1,6 @@
 # 🛍️ ShopWave — Full-Stack eCommerce Platform
 
 A complete, production-ready eCommerce application with User and Admin interfaces.
-
-## 🌐 Live Demo
-
-| Service | URL |
-|---------|-----|
-| **Application** | https://3000-in8hjbeotj2gq9ubzty1m-2e77fc33.sandbox.novita.ai |
-| **API Health** | https://3000-in8hjbeotj2gq9ubzty1m-2e77fc33.sandbox.novita.ai/api/health |
-
-## 🔐 Demo Credentials
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | admin@shopwave.com | admin123 |
-| **User** | user@shopwave.com | user123 |
-
-> **Test Payment**: Card `4242 4242 4242 4242` | Expiry `12/34` | CVV `123`
-
 ---
 
 ## 🚀 Tech Stack

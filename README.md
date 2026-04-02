@@ -19,33 +19,33 @@ A complete, production-ready eCommerce application with User and Admin interface
 
 ---
 
-## ✨ Features
+##  Features
 
-### 👤 User Features
-- 🏠 **Home Page** — Hero banner, category grid, featured products
-- 🛒 **Product Listing** — Pagination, search, category filter, price filter, sort
-- 📦 **Product Detail** — Images, description, reviews & ratings, wishlist
-- 🎨 **Product Customizer** — Add text, stickers, uploads, and multi-angle design editing
-- 💾 **My Saved Designs** — Save, reopen, delete, and reuse custom designs
-- 🛍️ **Shopping Cart** — Add/update/remove items, persistent local cart
-- 💳 **Checkout** — Multi-step checkout with Stripe payment integration
-- 📋 **Order History** — View all orders with status tracking
-- 👤 **User Profile** — Edit name, email, phone, address, password
-- ❤️ **Wishlist** — Save and manage favorite products
-- 🔐 **Auth** — Register/Login with JWT, role-based access
+###  User Features
+-  **Home Page** — Hero banner, category grid, featured products
+-  **Product Listing** — Pagination, search, category filter, price filter, sort
+-  **Product Detail** — Images, description, reviews & ratings, wishlist
+-  **Product Customizer** — Add text, stickers, uploads, and multi-angle design editing
+-  **My Saved Designs** — Save, reopen, delete, and reuse custom designs
+-  **Shopping Cart** — Add/update/remove items, persistent local cart
+-  **Checkout** — Multi-step checkout with Stripe payment integration
+-  **Order History** — View all orders with status tracking
+-  **User Profile** — Edit name, email, phone, address, password
+-  **Wishlist** — Save and manage favorite products
+-  **Auth** — Register/Login with JWT, role-based access
 
 ### 🔧 Admin Features
-- 📊 **Dashboard** — Live analytics: users, orders, revenue, products
-- 🛍️ **Product Management** — Create, edit, delete products with product image + reference images
-- 🎯 **Customization Control** — Enable/disable per-product customization settings
-- 🧩 **Sticker Management** — Upload, URL-import, categorize, update, and delete stickers
-- 📦 **Order Management** — View and update order status
-- 👥 **User Management** — View, change roles, delete users
-- 🔒 **Role-based Access** — Admin-only routes secured with JWT
+-  **Dashboard** — Live analytics: users, orders, revenue, products
+-  **Product Management** — Create, edit, delete products with product image + reference images
+-  **Customization Control** — Enable/disable per-product customization settings
+-  **Sticker Management** — Upload, URL-import, categorize, update, and delete stickers
+-  **Order Management** — View and update order status
+-  **User Management** — View, change roles, delete users
+-  **Role-based Access** — Admin-only routes secured with JWT
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 SHOPPING/
@@ -157,7 +157,7 @@ SHOPPING/
 
 ---
 
-## 🗃️ Database Schema
+##  Database Schema
 
 The app uses Sequelize models (PostgreSQL in production, SQLite in dev). Below is the logical schema with key fields used in the project.
 
@@ -529,16 +529,16 @@ For production, use an S3 bucket or Cloudflare R2.
 ## 📊 Analytics Dashboard
 
 The admin dashboard shows:
-- 📊 Total users registered
-- 📦 Total orders placed
-- 💰 Total revenue (from paid orders)
-- 🛍️ Total products in catalog
-- 📋 Recent orders with status
-- 📈 Order breakdown by status
+-  Total users registered
+-  Total orders placed
+-  Total revenue (from paid orders)
+-  Total products in catalog
+-  Recent orders with status
+-  Order breakdown by status
 
 ---
 
-## 🔒 Security Features
+##  Security Features
 
 - ✅ Passwords hashed with **bcrypt** (salt rounds: 12)
 - ✅ **JWT** authentication with 30-day expiry

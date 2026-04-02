@@ -1,4 +1,4 @@
-# 🛍️ ShopWave — Full-Stack eCommerce Platform
+# eCommerce Platform
 
 A complete, production-ready eCommerce application with User and Admin interfaces.
 ---

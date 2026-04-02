@@ -12,7 +12,7 @@ export function PageLoader() {
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center">
         <Spinner size="lg" />
-        <p className="mt-3 text-gray-500 text-sm">Loading...</p>
+        <p className="mt-3 text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
       </div>
     </div>
   );
@@ -21,10 +21,10 @@ export function PageLoader() {
 export function SkeletonCard() {
   return (
     <div className="card p-4 animate-pulse">
-      <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
-      <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
-      <div className="h-4 bg-gray-200 rounded mb-2 w-1/2"></div>
-      <div className="h-6 bg-gray-200 rounded w-1/3 mt-3"></div>
+      <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 w-3/4"></div>
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 w-1/2"></div>
+      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mt-3"></div>
     </div>
   );
 }

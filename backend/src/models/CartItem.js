@@ -12,6 +12,11 @@ const CartItem = sequelize.define('CartItem', {
     allowNull: false,
     defaultValue: 1,
   },
+  customization: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Store customization data: { previewImage, designData }',
+  },
 }, {
   tableName: 'cart_items',
 });

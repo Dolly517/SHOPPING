@@ -4,6 +4,11 @@ import api from '../../utils/api';
 import { PageLoader } from '../../components/common/Spinner';
 import { FiPackage, FiMapPin, FiCreditCard, FiArrowLeft } from 'react-icons/fi';
 
+const formatOrderId = (id) => {
+  if (!id) return '';
+  return `ORD-${String(id).padStart(6, '0')}`;
+};
+
 function getStatusColor(status) {
   const map = { pending: 'bg-yellow-100 text-yellow-700', processing: 'bg-blue-100 text-blue-700', shipped: 'bg-purple-100 text-purple-700', delivered: 'bg-green-100 text-green-700', cancelled: 'bg-red-100 text-red-700' };
   return map[status] || 'bg-gray-100 text-gray-700';
@@ -16,6 +21,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const EX_RATE = 1;
+
   useEffect(() => {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data)).catch(console.error).finally(() => setLoading(false));
   }, [id]);
@@ -24,6 +31,14 @@ export default function OrderDetailPage() {
   if (!order) return <div className="text-center py-20"><p>Order not found</p></div>;
 
   const currentStep = STATUS_STEPS.indexOf(order.status);
+  
+  const rawShipping = parseFloat(order.shippingPrice || 0);
+  const rawTax = parseFloat(order.taxPrice || 0);
+  const rawTotal = parseFloat(order.totalPrice || 0);
+  const rawSubtotal = rawTotal - rawShipping - rawTax;
+
+  // 🔥 NAYA LOGIC: Paid if flag is true OR if it's already delivered (For COD)
+  const isActuallyPaid = order.isPaid || order.paymentStatus === 'paid' || order.status === 'delivered';
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -31,11 +46,10 @@ export default function OrderDetailPage() {
         <FiArrowLeft className="w-4 h-4" /> Back to Orders
       </Link>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Order #{order.id}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{formatOrderId(order.id)}</h1>
         <span className={`badge px-3 py-1 text-sm ${getStatusColor(order.status)}`}>{order.status}</span>
       </div>
 
-      {/* Progress Tracker */}
       {order.status !== 'cancelled' && (
         <div className="card p-5 mb-6">
           <div className="flex items-center justify-between relative">
@@ -56,23 +70,38 @@ export default function OrderDetailPage() {
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          {/* Order Items */}
           <div className="card p-5">
             <h2 className="font-semibold mb-4 flex items-center gap-2"><FiPackage className="w-4 h-4 text-primary-600" /> Order Items</h2>
             <div className="space-y-3">
               {order.orderItems?.map(item => (
-                <div key={item.id} className="flex gap-3 items-center">
-                  <img src={item.image || 'https://via.placeholder.com/60'} alt={item.name} className="w-14 h-14 object-cover rounded-lg" onError={(e) => { e.target.src = 'https://via.placeholder.com/60'; }} />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-gray-400">Qty: {item.quantity} × ${parseFloat(item.price).toFixed(2)}</p>
+                <div key={item.id} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex gap-3 items-start">
+                    <img src={item.image || 'https://via.placeholder.com/60'} alt={item.name} className="w-14 h-14 object-cover rounded-lg" onError={(e) => { e.target.src = 'https://via.placeholder.com/60'; }} />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="text-xs text-gray-400">
+                        Qty: {item.quantity} × ₹{(parseFloat(item.price) * EX_RATE).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                    <span className="font-semibold text-sm">
+                      ₹{(parseFloat(item.price) * item.quantity * EX_RATE).toLocaleString('en-IN')}
+                    </span>
                   </div>
-                  <span className="font-semibold text-sm">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                  {/* Show customization preview if exists */}
+                  {item.customization?.previewImage && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 mb-2">Custom Design:</p>
+                      <img 
+                        src={item.customization.previewImage} 
+                        alt="custom-design" 
+                        className="w-24 h-24 object-cover rounded border border-gray-300"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
-          {/* Shipping */}
           <div className="card p-5">
             <h2 className="font-semibold mb-3 flex items-center gap-2"><FiMapPin className="w-4 h-4 text-primary-600" /> Shipping Address</h2>
             {order.shippingAddress && (
@@ -86,18 +115,38 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Summary */}
         <div className="card p-5 h-fit">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><FiCreditCard className="w-4 h-4 text-primary-600" /> Order Summary</h2>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>${(parseFloat(order.totalPrice) - parseFloat(order.shippingPrice || 0) - parseFloat(order.taxPrice || 0)).toFixed(2)}</span></div>
-            <div className="flex justify-between text-gray-600"><span>Shipping</span><span>{parseFloat(order.shippingPrice || 0) === 0 ? 'FREE' : `$${parseFloat(order.shippingPrice).toFixed(2)}`}</span></div>
-            <div className="flex justify-between text-gray-600"><span>Tax</span><span>${parseFloat(order.taxPrice || 0).toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100"><span>Total</span><span>${parseFloat(order.totalPrice).toFixed(2)}</span></div>
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>₹{(rawSubtotal * EX_RATE).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Shipping</span>
+              <span>{rawShipping === 0 ? 'FREE' : `₹${(rawShipping * EX_RATE).toLocaleString('en-IN')}`}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Tax</span>
+              <span>₹{(rawTax * EX_RATE).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100">
+              <span>Total</span>
+              <span>₹{(rawTotal * EX_RATE).toLocaleString('en-IN')}</span>
+            </div>
           </div>
-          <div className={`mt-4 p-3 rounded-lg text-sm ${order.isPaid ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-            {order.isPaid ? `✓ Paid on ${new Date(order.paidAt).toLocaleDateString()}` : '⚠ Payment Pending'}
+
+          {/* 🔥 UPDATE: Hybrid Payment Box */}
+          <div className={`mt-4 p-3 rounded-lg text-sm font-medium ${isActuallyPaid ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+            {isActuallyPaid ? (
+               `✓ Payment Received ${order.paymentMethod === 'COD' && order.status === 'delivered' ? '(COD Collected)' : ''}`
+            ) : (
+               `⚠ Payment Pending (${order.paymentMethod || 'COD'})`
+            )}
           </div>
+          {order.isPaid && order.paidAt && (
+            <p className="text-[10px] text-gray-400 mt-2 text-center">Paid on {new Date(order.paidAt).toLocaleDateString()}</p>
+          )}
         </div>
       </div>
     </div>

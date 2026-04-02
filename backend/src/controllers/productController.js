@@ -17,7 +17,19 @@ const getProducts = asyncHandler(async (req, res) => {
     ];
   }
   if (req.query.category) {
-    where.category = req.query.category;
+    if (req.query.category === 'Customizable') {
+      where.isCustomizable = true;
+    } else {
+      where.category = req.query.category;
+    }
+  }
+  if (req.query.customizable !== undefined) {
+    const customizableFlag = String(req.query.customizable).toLowerCase();
+    if (customizableFlag === 'true' || customizableFlag === '1') {
+      where.isCustomizable = true;
+    } else if (customizableFlag === 'false' || customizableFlag === '0') {
+      where.isCustomizable = false;
+    }
   }
   if (req.query.minPrice || req.query.maxPrice) {
     where.price = {};

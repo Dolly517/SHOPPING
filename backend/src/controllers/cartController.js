@@ -1,6 +1,62 @@
 const asyncHandler = require('express-async-handler');
 const { Cart, CartItem, Product } = require('../models');
 
+const hasCanvasObjects = (state) => {
+  if (!state || typeof state !== 'object') return false;
+  return Array.isArray(state.objects) && state.objects.length > 0;
+};
+
+const mergeCustomizationPayload = (existing = {}, incoming = {}) => {
+  const existingDesignData = existing?.designData && typeof existing.designData === 'object' ? existing.designData : {};
+  const incomingDesignData = incoming?.designData && typeof incoming.designData === 'object' ? incoming.designData : {};
+
+  const existingByAngle = existingDesignData?.byAngle && typeof existingDesignData.byAngle === 'object'
+    ? existingDesignData.byAngle
+    : {};
+  const incomingByAngle = incomingDesignData?.byAngle && typeof incomingDesignData.byAngle === 'object'
+    ? incomingDesignData.byAngle
+    : {};
+
+  const mergedByAngle = {
+    ...existingByAngle,
+    ...incomingByAngle,
+  };
+
+  const mergedAnglePreviews = {
+    ...(existing?.anglePreviews && typeof existing.anglePreviews === 'object' ? existing.anglePreviews : {}),
+    ...(incoming?.anglePreviews && typeof incoming.anglePreviews === 'object' ? incoming.anglePreviews : {}),
+  };
+
+  const mergedEditedAngles = Array.from(new Set([
+    ...(Array.isArray(existing?.editedAngles) ? existing.editedAngles : []),
+    ...(Array.isArray(incoming?.editedAngles) ? incoming.editedAngles : []),
+    ...Object.keys(mergedByAngle).filter((key) => hasCanvasObjects(mergedByAngle[key])),
+  ]));
+
+  const activeAngle = Number.isInteger(incomingDesignData?.activeAngle)
+    ? incomingDesignData.activeAngle
+    : existingDesignData?.activeAngle;
+
+  const nextDesignData = {
+    ...existingDesignData,
+    ...incomingDesignData,
+    byAngle: mergedByAngle,
+  };
+
+  if (activeAngle !== undefined) {
+    nextDesignData.activeAngle = activeAngle;
+  }
+
+  return {
+    ...existing,
+    ...incoming,
+    previewImage: incoming?.previewImage || existing?.previewImage || null,
+    designData: nextDesignData,
+    anglePreviews: mergedAnglePreviews,
+    editedAngles: mergedEditedAngles,
+  };
+};
+
 // @desc    Get user cart
 // @route   GET /api/cart
 const getCart = asyncHandler(async (req, res) => {
@@ -27,13 +83,14 @@ const getCart = asyncHandler(async (req, res) => {
 // @desc    Add item to cart
 // @route   POST /api/cart
 const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId, quantity, customization } = req.body;
+  const requestedQty = Number(quantity) || 1;
   const product = await Product.findByPk(productId);
   if (!product) {
     res.status(404);
     throw new Error('Product not found');
   }
-  if (product.stock < quantity) {
+  if (product.stock < requestedQty) {
     res.status(400);
     throw new Error('Not enough stock');
   }
@@ -41,15 +98,41 @@ const addToCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ where: { userId: req.user.id } });
   if (!cart) cart = await Cart.create({ userId: req.user.id });
 
-  const existingItem = await CartItem.findOne({
-    where: { cartId: cart.id, productId },
-  });
+  // For custom products, merge by mergeKey when present so multi-angle edits remain one cart item.
+  if (customization) {
+    const mergeKey = typeof customization?.mergeKey === 'string' ? customization.mergeKey.trim() : '';
+    if (mergeKey) {
+      const customizedItems = await CartItem.findAll({
+        where: { cartId: cart.id, productId },
+      });
 
-  if (existingItem) {
-    existingItem.quantity = Number(existingItem.quantity) + Number(quantity);
-    await existingItem.save();
+      const existingCustomizedItem = customizedItems.find((item) => {
+        const key = item?.customization && typeof item.customization === 'object'
+          ? item.customization.mergeKey
+          : '';
+        return key === mergeKey;
+      });
+
+      if (existingCustomizedItem) {
+        existingCustomizedItem.customization = mergeCustomizationPayload(existingCustomizedItem.customization, customization);
+        await existingCustomizedItem.save();
+      } else {
+        await CartItem.create({ cartId: cart.id, productId, quantity: requestedQty, customization });
+      }
+    } else {
+      await CartItem.create({ cartId: cart.id, productId, quantity: requestedQty, customization });
+    }
   } else {
-    await CartItem.create({ cartId: cart.id, productId, quantity });
+    const existingItem = await CartItem.findOne({
+      where: { cartId: cart.id, productId, customization: null },
+    });
+
+    if (existingItem) {
+      existingItem.quantity = Number(existingItem.quantity) + requestedQty;
+      await existingItem.save();
+    } else {
+      await CartItem.create({ cartId: cart.id, productId, quantity: requestedQty });
+    }
   }
 
   const updatedCart = await Cart.findOne({

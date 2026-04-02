@@ -60,7 +60,7 @@ export default function AdminUsers() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="text-left py-3 px-4 font-semibold text-gray-600">User</th>
@@ -109,7 +109,7 @@ export default function AdminUsers() {
           </table>
         </div>
         {pages > 1 && (
-          <div className="flex items-center justify-center gap-2 p-4 border-t border-gray-100">
+          <div className="flex flex-wrap items-center justify-center gap-2 p-4 border-t border-gray-100">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><FiChevronLeft className="w-4 h-4" /></button>
             {[...Array(Math.min(pages, 5))].map((_, i) => (
               <button key={i} onClick={() => setPage(i + 1)} className={`w-8 h-8 rounded-lg text-sm font-medium ${page === i + 1 ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{i + 1}</button>
@@ -122,7 +122,7 @@ export default function AdminUsers() {
       {/* Edit Role Modal */}
       {editUser && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">Edit User Role</h3>
               <button onClick={() => setEditUser(null)}><FiX className="w-5 h-5 text-gray-400" /></button>
@@ -134,7 +134,7 @@ export default function AdminUsers() {
                 <p className="text-sm text-gray-400">{editUser.email}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {['user', 'admin'].map(role => (
                 <button
                   key={role}
@@ -153,13 +153,13 @@ export default function AdminUsers() {
       {/* Delete Confirm */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full text-center">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <FiTrash2 className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-lg font-bold mb-2">Delete User?</h3>
             <p className="text-gray-500 text-sm mb-4">This action cannot be undone.</p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => deleteUser(deleteConfirm)} className="btn-danger flex-1">Delete</button>
               <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Cancel</button>
             </div>

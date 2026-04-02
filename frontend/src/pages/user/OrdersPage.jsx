@@ -4,6 +4,12 @@ import api from '../../utils/api';
 import { PageLoader } from '../../components/common/Spinner';
 import { FiPackage, FiEye } from 'react-icons/fi';
 
+// Naya Function: Order ID ko professional banane ke liye
+const formatOrderId = (id) => {
+  if (!id) return '';
+  return `ORD-${String(id).padStart(6, '0')}`;
+};
+
 function getStatusColor(status) {
   const map = { pending: 'bg-yellow-100 text-yellow-700', processing: 'bg-blue-100 text-blue-700', shipped: 'bg-purple-100 text-purple-700', delivered: 'bg-green-100 text-green-700', cancelled: 'bg-red-100 text-red-700' };
   return map[status] || 'bg-gray-100 text-gray-700';
@@ -12,6 +18,9 @@ function getStatusColor(status) {
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Exchange Rate (Set to 1 as we discussed for INR)
+  const EX_RATE = 1;
 
   useEffect(() => {
     api.get('/orders/myorders').then(({ data }) => setOrders(data)).catch(console.error).finally(() => setLoading(false));
@@ -31,27 +40,38 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map(order => (
-            <div key={order.id} className="card p-5">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-semibold text-gray-900">Order #{order.id}</span>
-                    <span className={`badge ${getStatusColor(order.status)}`}>{order.status}</span>
-                    {order.isPaid && <span className="badge bg-green-100 text-green-700">Paid</span>}
+          {orders.map(order => {
+            // 🔥 HYBRID LOGIC: Card payment success OR COD delivered
+            const showPaidBadge = order.isPaid || order.paymentStatus === 'paid' || order.status === 'delivered';
+
+            return (
+              <div key={order.id} className="card p-5">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-semibold text-gray-900">{formatOrderId(order.id)}</span>
+                      <span className={`badge ${getStatusColor(order.status)}`}>{order.status}</span>
+                      
+                      {/* 🔥 SMART PAID BADGE: Ab ye Delivered par bhi dikhega */}
+                      {showPaidBadge && (
+                        <span className="badge bg-green-100 text-green-700">Paid</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{order.orderItems?.length} item(s)</p>
                   </div>
-                  <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{order.orderItems?.length} item(s)</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-bold text-lg text-gray-900">${parseFloat(order.totalPrice).toFixed(2)}</span>
-                  <Link to={`/orders/${order.id}`} className="btn-secondary flex items-center gap-1.5 text-sm py-2">
-                    <FiEye className="w-4 h-4" /> View
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <span className="text-lg font-bold text-gray-900">
+                      ₹{(parseFloat(order.totalPrice) * EX_RATE).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                    <Link to={`/orders/${order.id}`} className="btn-secondary flex items-center gap-1.5 text-sm py-2">
+                      <FiEye className="w-4 h-4" /> View
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
-const { Op, fn, col, literal } = require('sequelize');
-const { User, Product, Order, OrderItem, Review } = require('../models');
+const { Op, fn, col } = require('sequelize');
+const { User, Product, Order, OrderItem } = require('../models');
 const multer = require('multer');
 const path = require('path');
 
@@ -11,19 +11,26 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ===== DASHBOARD =====
-// @desc    Get analytics
-// @route   GET /api/admin/dashboard
+// ===== DASHBOARD (Fixed Revenue Logic) =====
 const getDashboard = asyncHandler(async (req, res) => {
   const totalUsers = await User.count({ where: { role: 'user' } });
   const totalOrders = await Order.count();
   const totalProducts = await Product.count();
 
+  // HYBRID REVENUE LOGIC:
+  // 1. Sum if paymentStatus is 'paid' (Online payments)
+  // 2. OR if status is 'delivered' (COD payments collected)
   const revenueResult = await Order.findAll({
     attributes: [[fn('SUM', col('totalPrice')), 'revenue']],
-    where: { paymentStatus: 'paid' },
+    where: {
+      [Op.or]: [
+        { paymentStatus: 'paid' },
+        { status: 'delivered' }
+      ]
+    },
     raw: true,
   });
+
   const totalRevenue = parseFloat(revenueResult[0]?.revenue || 0);
 
   const recentOrders = await Order.findAll({
@@ -42,8 +49,6 @@ const getDashboard = asyncHandler(async (req, res) => {
 });
 
 // ===== PRODUCTS =====
-// @desc    Get all products (admin)
-// @route   GET /api/admin/products
 const adminGetProducts = asyncHandler(async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 20;
   const page = parseInt(req.query.page) || 1;
@@ -63,26 +68,77 @@ const adminGetProducts = asyncHandler(async (req, res) => {
   res.json({ products, page, pages: Math.ceil(count / pageSize), total: count });
 });
 
-// @desc    Create product
-// @route   POST /api/admin/products
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, stock, category, brand, featured } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : (req.body.image || '');
+  const { name, description, price, stock, category, brand, featured, isCustomizable, customSettings, customImageLinks } = req.body;
+  const image = req.files?.image?.[0] 
+    ? `/uploads/${req.files.image[0].filename}` 
+    : (req.body.image || '');
+  
+  // Handle custom reference images
+  const uploadedCustomImages = req.files?.customImages 
+    ? req.files.customImages.map(f => `/uploads/${f.filename}`)
+    : [];
+
+  let linkedCustomImages = [];
+  if (customImageLinks) {
+    try {
+      const parsed = JSON.parse(customImageLinks);
+      if (Array.isArray(parsed)) {
+        linkedCustomImages = parsed.filter((img) =>
+          typeof img === 'string' && (/^https?:\/\//i.test(img) || img.startsWith('/uploads/'))
+        );
+      }
+    } catch (error) {
+      linkedCustomImages = [];
+    }
+  }
+
+  const customImages = [...linkedCustomImages, ...uploadedCustomImages].slice(0, 5);
+
   const product = await Product.create({
-    name, description, price: parseFloat(price), stock: parseInt(stock),
-    category, brand, featured: featured === 'true' || featured === true,
+    name, 
+    description, 
+    price: parseFloat(price), 
+    stock: parseInt(stock),
+    category, 
+    brand, 
+    featured: featured === 'true' || featured === true,
     image,
+    isCustomizable: isCustomizable === 'true' || isCustomizable === true,
+    customImages: customImages.length > 0 ? customImages : null,
   });
   res.status(201).json(product);
 });
 
-// @desc    Update product
-// @route   PUT /api/admin/products/:id
 const updateProduct = asyncHandler(async (req, res) => {
   const product = await Product.findByPk(req.params.id);
   if (!product) { res.status(404); throw new Error('Product not found'); }
-  const { name, description, price, stock, category, brand, featured } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : (req.body.image || product.image);
+  const { name, description, price, stock, category, brand, featured, isCustomizable, customSettings, customImageLinks } = req.body;
+  const image = req.files?.image?.[0] 
+    ? `/uploads/${req.files.image[0].filename}` 
+    : (req.body.image || product.image);
+  
+  // Handle custom reference images updates
+  let linkedCustomImages = [];
+  if (customImageLinks) {
+    try {
+      const parsed = JSON.parse(customImageLinks);
+      if (Array.isArray(parsed)) {
+        linkedCustomImages = parsed.filter((img) =>
+          typeof img === 'string' && (/^https?:\/\//i.test(img) || img.startsWith('/uploads/'))
+        );
+      }
+    } catch (error) {
+      linkedCustomImages = [];
+    }
+  }
+
+  const uploadedCustomImages = req.files?.customImages
+    ? req.files.customImages.map(f => `/uploads/${f.filename}`)
+    : [];
+
+  const customImages = [...linkedCustomImages, ...uploadedCustomImages].slice(0, 5);
+  
   product.name = name || product.name;
   product.description = description !== undefined ? description : product.description;
   product.price = price !== undefined ? parseFloat(price) : product.price;
@@ -91,12 +147,13 @@ const updateProduct = asyncHandler(async (req, res) => {
   product.brand = brand !== undefined ? brand : product.brand;
   product.featured = featured !== undefined ? (featured === 'true' || featured === true) : product.featured;
   product.image = image;
+  product.isCustomizable = isCustomizable !== undefined ? (isCustomizable === 'true' || isCustomizable === true) : product.isCustomizable;
+  product.customImages = customImages.length > 0 ? customImages : null;
+  
   await product.save();
   res.json(product);
 });
 
-// @desc    Delete product
-// @route   DELETE /api/admin/products/:id
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findByPk(req.params.id);
   if (!product) { res.status(404); throw new Error('Product not found'); }
@@ -105,8 +162,6 @@ const deleteProduct = asyncHandler(async (req, res) => {
 });
 
 // ===== ORDERS =====
-// @desc    Get all orders (admin)
-// @route   GET /api/admin/orders
 const adminGetOrders = asyncHandler(async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 20;
   const page = parseInt(req.query.page) || 1;
@@ -126,23 +181,29 @@ const adminGetOrders = asyncHandler(async (req, res) => {
   res.json({ orders, page, pages: Math.ceil(count / pageSize), total: count });
 });
 
-// @desc    Update order status
-// @route   PUT /api/admin/orders/:id
+// @desc    Update order status (COD Support Added)
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const order = await Order.findByPk(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
-  order.status = req.body.status || order.status;
-  if (req.body.status === 'delivered') {
+
+  const newStatus = req.body.status || order.status;
+  order.status = newStatus;
+
+  // 🔥 COD Logic Fix:
+  // Jab order deliver ho jaye, tab use Paid mark kar do
+  if (newStatus === 'delivered') {
     order.isDelivered = true;
     order.deliveredAt = new Date();
+    order.paymentStatus = 'paid'; 
+    order.isPaid = true;
+    order.paidAt = new Date();
   }
+
   await order.save();
   res.json(order);
 });
 
 // ===== USERS =====
-// @desc    Get all users (admin)
-// @route   GET /api/admin/users
 const adminGetUsers = asyncHandler(async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 20;
   const page = parseInt(req.query.page) || 1;
@@ -156,8 +217,6 @@ const adminGetUsers = asyncHandler(async (req, res) => {
   res.json({ users, page, pages: Math.ceil(count / pageSize), total: count });
 });
 
-// @desc    Update user role
-// @route   PUT /api/admin/users/:id
 const updateUserRole = asyncHandler(async (req, res) => {
   const user = await User.findByPk(req.params.id, { attributes: { exclude: ['password'] } });
   if (!user) { res.status(404); throw new Error('User not found'); }
@@ -166,8 +225,6 @@ const updateUserRole = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
-// @desc    Delete user
-// @route   DELETE /api/admin/users/:id
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (!user) { res.status(404); throw new Error('User not found'); }

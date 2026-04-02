@@ -7,6 +7,9 @@ const Cart = require('./Cart');
 const CartItem = require('./CartItem');
 const Review = require('./Review');
 const Wishlist = require('./Wishlist');
+const CustomProduct = require('./CustomProduct');
+const SavedDesign = require('./SavedDesign');
+const Sticker = require('./Sticker');
 
 // User associations
 User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
@@ -42,6 +45,20 @@ Wishlist.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Wishlist.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 Product.hasMany(Wishlist, { foreignKey: 'productId', as: 'wishlistItems' });
 
+// Customization associations
+Product.hasOne(CustomProduct, { foreignKey: 'baseProductId', as: 'customization' });
+CustomProduct.belongsTo(Product, { foreignKey: 'baseProductId', as: 'baseProduct' });
+
+User.hasMany(SavedDesign, { foreignKey: 'userId', as: 'savedDesigns' });
+SavedDesign.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Product.hasMany(SavedDesign, { foreignKey: 'productId', as: 'savedDesigns' });
+SavedDesign.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+
+// Sticker associations
+User.hasMany(Sticker, { foreignKey: 'uploadedBy', as: 'uploadedStickers' });
+Sticker.belongsTo(User, { foreignKey: 'uploadedBy', as: 'uploader' });
+
 module.exports = {
   sequelize,
   User,
@@ -52,4 +69,7 @@ module.exports = {
   CartItem,
   Review,
   Wishlist,
+  CustomProduct,
+  SavedDesign,
+  Sticker,
 };

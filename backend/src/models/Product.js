@@ -59,6 +59,22 @@ const Product = sequelize.define('Product', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  isCustomizable: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  customImages: {
+    type: DataTypes.TEXT,
+    defaultValue: '[]',
+    comment: 'JSON array of reference images (front, back, side, etc.) for customizable products',
+    get() {
+      const val = this.getDataValue('customImages');
+      try { return JSON.parse(val || '[]'); } catch { return []; }
+    },
+    set(val) {
+      this.setDataValue('customImages', JSON.stringify(val || []));
+    },
+  },
 }, {
   tableName: 'products',
 });

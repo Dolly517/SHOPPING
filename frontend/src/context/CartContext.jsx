@@ -5,6 +5,63 @@ import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
+const hasCanvasObjects = (state) => {
+  if (!state || typeof state !== 'object') return false;
+  return Array.isArray(state.objects) && state.objects.length > 0;
+};
+
+const getCustomizationKey = (customization) => {
+  if (!customization || typeof customization !== 'object') return '';
+  if (typeof customization.mergeKey === 'string' && customization.mergeKey.trim()) {
+    return `merge:${customization.mergeKey.trim()}`;
+  }
+  return JSON.stringify(customization);
+};
+
+const mergeCustomizationPayload = (existing = {}, incoming = {}) => {
+  const existingDesignData = existing?.designData && typeof existing.designData === 'object' ? existing.designData : {};
+  const incomingDesignData = incoming?.designData && typeof incoming.designData === 'object' ? incoming.designData : {};
+
+  const existingByAngle = existingDesignData?.byAngle && typeof existingDesignData.byAngle === 'object'
+    ? existingDesignData.byAngle
+    : {};
+  const incomingByAngle = incomingDesignData?.byAngle && typeof incomingDesignData.byAngle === 'object'
+    ? incomingDesignData.byAngle
+    : {};
+
+  const mergedByAngle = {
+    ...existingByAngle,
+    ...incomingByAngle,
+  };
+
+  const mergedAnglePreviews = {
+    ...(existing?.anglePreviews && typeof existing.anglePreviews === 'object' ? existing.anglePreviews : {}),
+    ...(incoming?.anglePreviews && typeof incoming.anglePreviews === 'object' ? incoming.anglePreviews : {}),
+  };
+
+  const mergedEditedAngles = Array.from(new Set([
+    ...(Array.isArray(existing?.editedAngles) ? existing.editedAngles : []),
+    ...(Array.isArray(incoming?.editedAngles) ? incoming.editedAngles : []),
+    ...Object.keys(mergedByAngle).filter((key) => hasCanvasObjects(mergedByAngle[key])),
+  ]));
+
+  return {
+    ...existing,
+    ...incoming,
+    previewImage: incoming?.previewImage || existing?.previewImage || null,
+    designData: {
+      ...existingDesignData,
+      ...incomingDesignData,
+      byAngle: mergedByAngle,
+      activeAngle: Number.isInteger(incomingDesignData?.activeAngle)
+        ? incomingDesignData.activeAngle
+        : existingDesignData?.activeAngle,
+    },
+    anglePreviews: mergedAnglePreviews,
+    editedAngles: mergedEditedAngles,
+  };
+};
+
 export const CartProvider = ({ children }) => {
   const { user } = useAuth();
   const [cart, setCart] = useState(null);
@@ -34,23 +91,55 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = async (product, quantity = 1) => {
+  const addToCart = async (product, quantity = 1, customization = null) => {
     if (!user) {
       // Local cart
+      const customizationKey = getCustomizationKey(customization);
       setLocalCart(prev => {
-        const existing = prev.find(i => i.productId === product.id);
+        const existing = prev.find(
+          i => i.productId === product.id && (i.customizationKey || '') === customizationKey
+        );
+
         if (existing) {
-          toast.success('Cart updated!');
-          return prev.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + quantity } : i);
+          const shouldMergeCustomization = Boolean(customization?.mergeKey);
+          toast.success(shouldMergeCustomization ? 'Customization updated in cart!' : 'Cart updated!');
+          return prev.map(i => {
+            const itemId = i.id ?? i.productId;
+            const existingId = existing.id ?? existing.productId;
+            if (itemId !== existingId) return i;
+            return {
+              ...i,
+              quantity: shouldMergeCustomization ? i.quantity : i.quantity + quantity,
+              customization: shouldMergeCustomization
+                ? mergeCustomizationPayload(i.customization || {}, customization || {})
+                : i.customization,
+              customizationKey,
+            };
+          });
         }
+
         toast.success('Added to cart!');
-        return [...prev, { productId: product.id, product, quantity }];
+        return [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+            productId: product.id,
+            product,
+            quantity,
+            customization,
+            customizationKey,
+          },
+        ];
       });
       return;
     }
     setLoading(true);
     try {
-      const { data } = await api.post('/cart', { productId: product.id, quantity });
+      const { data } = await api.post('/cart', { 
+        productId: product.id, 
+        quantity,
+        customization: customization || undefined, // Send customization if exists
+      });
       setCart(data);
       toast.success('Added to cart!');
     } catch (error) {
@@ -63,9 +152,9 @@ export const CartProvider = ({ children }) => {
   const updateCartItem = async (itemId, quantity) => {
     if (!user) {
       if (quantity <= 0) {
-        setLocalCart(prev => prev.filter(i => i.productId !== itemId));
+        setLocalCart(prev => prev.filter(i => (i.id ?? i.productId) !== itemId));
       } else {
-        setLocalCart(prev => prev.map(i => i.productId === itemId ? { ...i, quantity } : i));
+        setLocalCart(prev => prev.map(i => (i.id ?? i.productId) === itemId ? { ...i, quantity } : i));
       }
       return;
     }
@@ -79,7 +168,7 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (itemId) => {
     if (!user) {
-      setLocalCart(prev => prev.filter(i => i.productId !== itemId));
+      setLocalCart(prev => prev.filter(i => (i.id ?? i.productId) !== itemId));
       toast.success('Removed from cart');
       return;
     }
@@ -104,7 +193,13 @@ export const CartProvider = ({ children }) => {
 
   const cartItems = user
     ? (cart?.cartItems || [])
-    : localCart.map(item => ({ id: item.productId, productId: item.productId, quantity: item.quantity, product: item.product }));
+    : localCart.map(item => ({
+        id: item.id ?? item.productId,
+        productId: item.productId,
+        quantity: item.quantity,
+        product: item.product,
+        customization: item.customization || null,
+      }));
 
   const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
 

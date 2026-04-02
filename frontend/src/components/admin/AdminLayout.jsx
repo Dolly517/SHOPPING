@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  MdDashboard, MdInventory, MdShoppingBag, MdPeople, MdMenu, MdClose,
+  MdDashboard, MdInventory, MdShoppingBag, MdPeople, MdMenu, MdClose, MdImage,
 } from 'react-icons/md';
 import { FiLogOut, FiHome, FiChevronRight } from 'react-icons/fi';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: MdDashboard, exact: true },
   { path: '/admin/products', label: 'Products', icon: MdInventory },
+  { path: '/admin/stickers', label: 'Stickers', icon: MdImage },
   { path: '/admin/orders', label: 'Orders', icon: MdShoppingBag },
   { path: '/admin/users', label: 'Users', icon: MdPeople },
 ];
@@ -81,25 +82,25 @@ export default function AdminLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500">
               <MdMenu className="w-6 h-6" />
             </button>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 min-w-0">
               <span>Admin</span>
               <FiChevronRight className="w-3 h-3" />
-              <span className="font-semibold text-gray-900">{currentPage}</span>
+              <span className="font-semibold text-gray-900 truncate">{currentPage}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+          <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-600">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             Admin Mode
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

@@ -24,6 +24,11 @@ const OrderItem = sequelize.define('OrderItem', {
     type: DataTypes.STRING,
     defaultValue: '',
   },
+  customization: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Stores {previewImage, designData} for customized products',
+  },
 }, {
   tableName: 'order_items',
 });

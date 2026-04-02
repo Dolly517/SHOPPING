@@ -3,9 +3,19 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { FiCheckCircle, FiPackage } from 'react-icons/fi';
 
+// Naya Function: Order ID ko professional banane ke liye
+// Ye '5' ko 'ORD-000005' mein convert kar dega
+const formatOrderId = (id) => {
+  if (!id) return '';
+  return `ORD-${String(id).padStart(6, '0')}`;
+};
+
 export default function OrderSuccessPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
+
+  // Exchange Rate (Pichle pages ki tarah)
+  const EX_RATE = 1;
 
   useEffect(() => {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data)).catch(console.error);
@@ -17,24 +27,36 @@ export default function OrderSuccessPage() {
         <FiCheckCircle className="w-16 h-16 text-green-500" />
       </div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
-      <p className="text-gray-500 mb-6">Thank you for your purchase. Your order #{id} has been placed successfully.</p>
+      
+      {/* Yahan humne normal ID ki jagah formatted ID lagayi hai */}
+      <p className="text-gray-500 mb-6">
+        Thank you for your purchase. Your order <span className="font-semibold text-gray-800">{formatOrderId(id)}</span> has been placed successfully.
+      </p>
+      
       {order && (
         <div className="card p-6 text-left mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Order #{order.id}</h3>
+            {/* Yahan bhi formatted ID */}
+            <h3 className="font-semibold text-lg">{formatOrderId(order.id)}</h3>
             <span className={`badge ${getStatusColor(order.status)}`}>{order.status}</span>
           </div>
           <div className="space-y-3">
             {order.orderItems?.map(item => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-gray-600">{item.name} × {item.quantity}</span>
-                <span className="font-medium">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                {/* Yahan Rupees (₹) aur * 83 wala calculation */}
+                <span className="font-medium text-gray-900">
+                  ₹{((parseFloat(item.price) * item.quantity) * EX_RATE).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between font-bold">
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between font-bold text-lg">
             <span>Total</span>
-            <span>${parseFloat(order.totalPrice).toFixed(2)}</span>
+            {/* Total ko bhi Rupees mein convert kar diya */}
+            <span className="text-gray-900">
+              ₹{(parseFloat(order.totalPrice) * EX_RATE).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
           </div>
         </div>
       )}

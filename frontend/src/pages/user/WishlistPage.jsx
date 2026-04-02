@@ -32,7 +32,7 @@ export default function WishlistPage() {
                 <Link to={`/products/${item.productId}`} className="font-semibold text-sm text-gray-900 hover:text-primary-600 line-clamp-2 block mb-1">{item.product?.name}</Link>
                 <StarRating rating={parseFloat(item.product?.rating || 0)} numReviews={item.product?.numReviews} />
                 <div className="flex items-center justify-between mt-3">
-                  <span className="font-bold text-gray-900">${parseFloat(item.product?.price || 0).toFixed(2)}</span>
+                  <span className="font-bold text-gray-900">₹{parseFloat(item.product?.price || 0).toFixed(2)}</span>
                   <button onClick={() => addToCart(item.product, 1)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
                     <FiShoppingCart className="w-3.5 h-3.5" /> Add to Cart
                   </button>
